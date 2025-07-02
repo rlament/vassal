@@ -120,7 +120,7 @@ public class Expression {
   }
 
   protected void handleError(ExpressionException e) {
-    ErrorDialog.dataWarning(new BadDataReport(Resources.getString("Error.expression_error"), getExpression(), e));
+    ErrorDialog.dataWarning(new BadDataReport(Resources.getString("Error.expression_error"), getExpression(), e.getCause()));
   }
 
 

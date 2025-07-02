@@ -26,6 +26,7 @@ import VASSAL.script.expression.AuditTrail;
 import VASSAL.script.expression.Auditable;
 import VASSAL.script.expression.AuditableException;
 import VASSAL.script.expression.ExpressionException;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * General-purpose condition indicating that VASSAL has encountered data that's inconsistent with the current module.
@@ -58,9 +59,7 @@ public class BadDataReport {
    * @param cause Throwable that generated error
    */
   public BadDataReport(String message, String data, Throwable cause) {
-    this.message = message;
-    this.data = data;
-    setCause(cause);
+    this(null, null, message, data, cause);
   }
 
   /**
@@ -125,15 +124,31 @@ public class BadDataReport {
   }
 
   public BadDataReport(String pieceName, String traitDesc, String message, String data, Throwable cause) {
-    String m = "";
+    final StringBuilder m = new StringBuilder();
     if (! (cause instanceof AuditableException)) {
-      m = ((pieceName != null && pieceName.length() > 0) ? pieceName + " " : "");
-      m += ((traitDesc != null && traitDesc.length() > 0) ? "[" + traitDesc + "] " : "");
-      m += m.length() > 0 ? ". " : "";
+      if (!StringUtils.isBlank(pieceName)) {
+        m.append(pieceName);
+      }
+      if (!StringUtils.isBlank(traitDesc)) {
+        if (m.length() > 0) {
+          m.append(' ');
+        }
+        m.append('[').append(traitDesc).append(']');
+      }
+      m.append(m.length() > 0 ? ". " : "");
     }
-    m += message + ". " + getAuditMessage();
+    // Override the default error with a number format specific error message.
+    if (cause instanceof NumberFormatException) {
+      m.append(Resources.getString("Error.number_format_exception"))
+              .append(' ')
+              .append(cause.getLocalizedMessage());
+    }
+    else {
+      m.append(message);
+    }
+    m.append(". ").append(getAuditMessage());
 
-    this.message = m;
+    this.message = m.toString();
     this.data = data;
     setCause(cause);
   }

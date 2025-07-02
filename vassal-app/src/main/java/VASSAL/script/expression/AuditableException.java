@@ -24,6 +24,11 @@ public class AuditableException extends Exception {
   protected AuditTrail auditTrail;
 
   public AuditableException(Auditable owner, AuditTrail auditTrail) {
+    this(owner, auditTrail, null);
+  }
+
+  public AuditableException(Auditable owner, AuditTrail auditTrail, Throwable cause) {
+    super("", cause);
     this.owner = owner;
     this.auditTrail = auditTrail;
   }

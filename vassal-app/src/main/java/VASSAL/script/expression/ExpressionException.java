@@ -28,11 +28,15 @@ public class ExpressionException extends AuditableException {
   }
 
   public ExpressionException(String s, String e) {
-    this(s, e, null, null);
+    this(s, e, null, null, null);
   }
 
   public ExpressionException(String s, String e, Auditable owner, AuditTrail auditTrail) {
-    super(owner, auditTrail);
+    this(s, e, owner, auditTrail, null);
+  }
+
+  public ExpressionException(String s, String e, Auditable owner, AuditTrail auditTrail, Throwable cause) {
+    super(owner, auditTrail, cause);
     expression = s;
     error = e;
   }

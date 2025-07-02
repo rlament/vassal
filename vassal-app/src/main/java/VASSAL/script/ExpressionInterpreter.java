@@ -376,7 +376,8 @@ public class ExpressionInterpreter extends AbstractInterpreter implements Loopab
         if (audit != null) {
           audit.addMessage(Resources.getString("Audit.error_trail", m));
         }
-        throw new ExpressionException(getExpression(), s.substring(pos + search.length()), owner, audit);
+        final Throwable cause = (e instanceof bsh.TargetError) ? ((bsh.TargetError) e).getTarget() : null;
+        throw new ExpressionException(getExpression(), s.substring(pos + search.length()), owner, audit, cause);
       }
     }
     catch (RecursionLimitException e) {

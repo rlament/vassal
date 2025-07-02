@@ -55,7 +55,7 @@ public class SinglePropertyExpression extends Expression {
       }
     }
     catch (Exception ex) {
-      throw new ExpressionException(getExpression(), ex.getMessage(), owner, audit);
+      throw new ExpressionException(getExpression(), ex.getMessage(), owner, audit, ex);
     }
     return value == null ? "" : value;
   }
