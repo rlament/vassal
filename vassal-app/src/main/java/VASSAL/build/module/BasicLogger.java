@@ -555,21 +555,35 @@ public class BasicLogger implements Logger, Buildable, GameComponent, CommandEnc
       return; //BR// Throw away extra keys-held-down when nothing left to do
     }
 
-    final Command lastOutput = logOutput.get(nextUndo);
+    Command lastOutput = logOutput.get(nextUndo);
     final Command lastInput = (nextInput > logInput.size() || nextInput < 1) ?
       null : logInput.get(nextInput - 1);
     if (lastInput == lastOutput) {
-      while (nextInput-- > dontUndoPast) {
+      if (nextInput-- > dontUndoPast) {
         stepAction.setEnabled(true);
-        if (logInput.get(nextInput).getUndoCommand() != null) {
-          break;
-        }
+//        if (logInput.get(nextInput).getUndoCommand() != null) {
+//          break;
+//        }
       }
     }
 
+    // Skip already executed undo commands.
+    int skipCount = 0;
     while (nextUndo-- > dontUndoPast) {
-      if (logOutput.get(nextUndo).getUndoCommand() != null) {
+      if (lastInput == lastOutput && lastInput instanceof UndoCommand) {
+        // Don't skip undo commands in log files.
         break;
+      }
+      if (lastOutput instanceof UndoCommand) {
+        // For each undo command, skip an actual command
+        // since each undo should match a command.
+        skipCount++;
+      } else if (skipCount-- <= 0) {
+        break;
+      }
+      lastOutput = logOutput.get(nextUndo);
+      if (skipCount == 0 && lastInput == lastOutput) {
+        nextInput--;
       }
     }
 
@@ -578,6 +592,17 @@ public class BasicLogger implements Logger, Buildable, GameComponent, CommandEnc
     undo.execute();
     GameModule.getGameModule().getServer().sendToOthers(undo);
     logOutput.add(undo);
+    if (nextUndo < dontUndoPast) {
+      if (lastInput != lastOutput) {
+        // Prevent a re-undo of already undone commands, but not during log file playback.
+        // Includes preventing the just added undo command.
+        dontUndoPast = logOutput.size();
+      }
+      else if (nextInput == 0) {
+        dontUndoPast = logOutput.size();
+        undoAction.setEnabled(nextUndo >= dontUndoPast);
+      }
+    }
     GameModule.getGameModule().refreshVisibleMaps();
   }
 
