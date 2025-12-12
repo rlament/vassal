@@ -559,15 +559,13 @@ public class BasicLogger implements Logger, Buildable, GameComponent, CommandEnc
     final Command lastInput = (nextInput > logInput.size() || nextInput < 1) ?
       null : logInput.get(nextInput - 1);
     if (lastInput == lastOutput) {
-      if (nextInput-- > dontUndoPast) {
-        stepAction.setEnabled(true);
-//        if (logInput.get(nextInput).getUndoCommand() != null) {
-//          break;
-//        }
-      }
+      nextInput--;
+      stepAction.setEnabled(isReplaying());
     }
 
-    // Skip already executed undo commands.
+    // Skip already executed undo commands. There should be a one-to-one
+    // correspondence of commands to undos. Find the command to undo
+    // skipping over command/undo pairs. skipCount counts the unmatched paris.
     int skipCount = 0;
     while (nextUndo-- > dontUndoPast) {
       if (lastInput == lastOutput && lastInput instanceof UndoCommand) {
@@ -578,13 +576,15 @@ public class BasicLogger implements Logger, Buildable, GameComponent, CommandEnc
         // For each undo command, skip an actual command
         // since each undo should match a command.
         skipCount++;
-      } else if (skipCount-- <= 0) {
+      }
+      else if (skipCount-- <= 0) {
+        // Breakout, we found the command to undo.
         break;
       }
       lastOutput = logOutput.get(nextUndo);
-      if (skipCount == 0 && lastInput == lastOutput) {
-        nextInput--;
-      }
+//      if (skipCount == 0 && lastInput == lastOutput) {
+//        nextInput--;
+//      }
     }
 
     undoAction.setEnabled(nextUndo >= dontUndoPast);
