@@ -40,7 +40,7 @@ public class BasicLoggerTest {
     char letter = 'A';
     char number = '1';
     Command c;
-    // Setup log file input
+    // Setup the input log to simulating a vlog file.
     for (char action : actions.toCharArray()) {
       if (action == 'S' || action == 'X') {
         c = new Chatter.DisplayText(gm.getChatter(), Character.toString(letter));
@@ -94,7 +94,8 @@ public class BasicLoggerTest {
           assertEquals(c.toString(), logger.logOutput.get(outputIndex++).toString());
           break;
         case 'U':
-          outputIndex++;
+          Command undo = logger.logOutput.get(outputIndex++);
+          assertInstanceOf(BasicLogger.UndoCommand.class, undo);
           break;
       }
     }
@@ -249,6 +250,62 @@ public class BasicLoggerTest {
         assertTrue(m2.find());
         assertEquals(m1.group(1), m2.group(1));
       }
+    }
+  }
+
+  @Test
+  public void alternatingUndoLogWithCommandInjectionDuringUndo() {
+    try (MockedStatic<GameModule> staticGm = Mockito.mockStatic(GameModule.class)) {
+      final GameModule gm = mock(GameModule.class);
+      staticGm.when(GameModule::getGameModule).thenReturn(gm);
+      BasicLogger logger = new BasicLogger();
+
+      GameState gameState = new GameState();
+      staticGm.when(gm::getGameState).thenReturn(gameState);
+      ServerConnection server = new NodeClient("moduleName", "playerId", logger, "host", 0, null);
+      staticGm.when(gm::getServer).thenReturn(server);
+
+      // Mock sendAndLog removing the send while retaining the logging portion.
+      staticGm.when(()->gm.sendAndLog(any(Command.class))).thenAnswer(new Answer<Object>() {
+        @Override
+        public Object answer(InvocationOnMock input) throws Throwable {
+          logger.log(input.getArgument(0));
+          return null;
+        }
+      });
+
+      for (char letter = 'A'; letter <= 'C'; ++letter) {
+        Command c = new Chatter.DisplayText(gm.getChatter(), Character.toString(letter));
+        logger.logInput.add(c);
+        Command undo = new BasicLogger.UndoCommand(true)
+                .append(c.getUndoCommand())
+                .append((new BasicLogger.UndoCommand(false)));
+        logger.logInput.add(undo);
+      }
+
+      while (logger.isReplaying()) {
+        logger.step();
+      }
+      logger.undo();  // Undo Undo C
+      logger.undo();  // Undo C
+
+      logger.log(new Chatter.DisplayText(gm.getChatter(),"User message"));
+      logger.undo();  // Undo User message
+      logger.undo();  // Undo Undo B
+      logger.undo();  // Undo B
+
+      Command b = new Chatter.DisplayText(gm.getChatter(), "B");
+      Command undoB = new BasicLogger.UndoCommand(true)
+              .append(b.getUndoCommand())
+              .append((new BasicLogger.UndoCommand(false)));
+      assertEquals(undoB.toString(), logger.logOutput.get(logger.logOutput.size()-1).toString());
+
+      logger.undo();
+      logger.undo();
+
+      // Confirm return to the start of the log file.
+      assertTrue(logger.isReplaying());
+      assertFalse(logger.undoAction.isEnabled());
     }
   }
 
