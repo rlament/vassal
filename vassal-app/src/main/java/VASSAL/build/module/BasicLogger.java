@@ -567,8 +567,12 @@ public class BasicLogger implements Logger, Buildable, GameComponent, CommandEnc
     // correspondence of commands to undos. Find the command to undo
     // skipping over command/undo pairs. skipCount counts the unmatched paris.
     int skipCount = 0;
+    final Boolean isLastInputUndoCommand = lastInput instanceof UndoCommand;
     while (nextUndo-- > dontUndoPast) {
-      if (lastInput == lastOutput && lastInput instanceof UndoCommand) {
+      if (lastInput == lastOutput && (isLastInputUndoCommand || skipCount > 0)) {
+        if (isLastInputUndoCommand && skipCount > 0) {
+          nextInput--;
+        }
         // Don't skip undo commands in log files.
         break;
       }
@@ -582,9 +586,10 @@ public class BasicLogger implements Logger, Buildable, GameComponent, CommandEnc
         break;
       }
       lastOutput = logOutput.get(nextUndo);
-//      if (skipCount == 0 && lastInput == lastOutput) {
-//        nextInput--;
-//      }
+      if (skipCount == 0 && lastInput == lastOutput) {
+        // This is an undo of a command from a log file.
+        nextInput--;
+      }
     }
 
     undoAction.setEnabled(nextUndo >= dontUndoPast);
