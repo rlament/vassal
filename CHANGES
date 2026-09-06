@@ -4,7 +4,9 @@
 * 14583: MoveCameraButton now uses preferred center instead of viewport
     center
 
-3.7.27 - ???
+3.7.28 - ???
+
+3.7.27 - 6 September 2026
 
 * 15046: Upgraded checkstyle to 14.1.0
 * 15045: Upgraded maven-compiler-plugin to 3.16.0

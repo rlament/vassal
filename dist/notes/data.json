@@ -30,60 +30,6 @@
       ],
       "other": [
       ]
-    },
-    {
-      "in": "3.2.27",
-      "since": "3.2.26",
-      "new_features": [
-      ],
-      "bug_fixes": [
-        { "num": 15038, "desc": "Added server options to Linux launch script" },
-        { "num": 15037, "desc": "Fixed VASSAL.sh script to quote file name" }
-      ],
-      "improvements": [
-        { "num": 15036, "desc": "Added explanation of expressions to Concepts.ado" },
-        { "num": 15035, "desc": "Fixed typo in ExpressionRange.adoc" },
-        { "num": 15032, "desc": "Use maximum compression for saves and logs" },
-        { "num": 14533, "desc": "Configure mnemonics for non-English yes/no buttons" }
-      ],
-      "other": [
-        { "num": 15046, "desc": "Upgraded checkstyle to 14.1.0" },
-        { "num": 15045, "desc": "Upgraded maven-compiler-plugin to 3.16.0" },
-        { "num": 15041, "desc": "Updated bundled Java to 26.0.2.1+1 (Windows x86_64, MacOS), 26.0.2+13 (Windows aarch64), 21.0.12.1+1 (Windows x86_32)" },
-        { "num": 15031, "desc": "Upgraded jsoup to 1.23.2" },
-        { "num": 15017, "desc": "Upgraded spotbugs-maven-plugin to 4.10.4.0" },
-        { "num": 15016, "desc": "Upgraded spotbugs-annotations to 4.10.4" },
-        { "num": 15003, "desc": "Upgraded byte-buddy to 1.18.12" },
-        { "num": 14998, "desc": "Upgraded logback-classic to 1.6.3" },
-        { "num": 14994, "desc": "Upgraded maven to 3.9.16" },
-        { "num": 14990, "desc": "Upgraded swingx-all to 2.2" },
-        { "num": 14986, "desc": "Upgraded junit-bom to 6.1.3" },
-        { "num": 14985, "desc": "Upgraded httpclient5 to 5.6.4" },
-        { "num": 14936, "desc": "Upgraded commons-codec to 1.22.1" }
-      ]
-    },
-    {
-      "in": "3.8.0-beta1",
-      "since": "3.7.26",
-      "new_features": [
-        { "num": 14582, "desc": "Add oblique hex grid numbering" },
-        { "num": 14342, "desc": "Add Movement Trail option to keep only last position per location" },
-        { "num": 13168, "desc": "Multi-Location Command includes the option to sort the order of the commands generated" },
-        { "num": 12944, "desc": "Add pieceCount to the map auto reporter" },
-        { "num": 12763, "desc": "Added ModuleGameFileName property" }
-      ],
-      "bug_fixes": [
-      ],
-      "improvements": [
-      ],
-      "other": [
-        { "num": 14998, "desc": "Upgraded logback-classic to 1.6.3" },
-        { "num": 14994, "desc": "Upgraded maven to 3.9.16" },
-        { "num": 14990, "desc": "Upgraded swingx-all to 2.2" },
-        { "num": 14986, "desc": "Upgraded junit-bom to 6.1.3" },
-        { "num": 14985, "desc": "Upgraded httpclient5 to 5.6.4" },
-        { "num": 14936, "desc": "Upgraded commons-codec to 1.22.1" }
-      ]
     }
   ]
 }
