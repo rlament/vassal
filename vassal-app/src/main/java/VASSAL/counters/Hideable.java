@@ -68,6 +68,12 @@ public class Hideable extends Decorator implements TranslatablePiece {
   protected KeyCommand hideCommand;
   protected String description = "";
 
+  // Cache the Hidden image that is shown to the owner. Only re-generate when Zoom or piece state changes.
+  protected BufferedImage cachedImage;
+  protected double cachedZoom = -1d;
+  protected String cachedState = "";
+  protected Rectangle cachedBounds = new Rectangle();
+
   @Override
   public void setProperty(Object key, Object val) {
     if (HIDDEN_BY.equals(key)) {
@@ -205,7 +211,7 @@ public class Hideable extends Decorator implements TranslatablePiece {
     if (invisibleToOthers()) {
 
       // Determine piece bounds at current zoom
-      Rectangle bounds = piece.getShape().getBounds();
+      final Rectangle bounds = piece.getShape().getBounds();
       final int w = (int) Math.round(bounds.width * zoom);
       final int h = (int) Math.round(bounds.height * zoom);
 
@@ -214,31 +220,24 @@ public class Hideable extends Decorator implements TranslatablePiece {
         return;
       }
 
-      // Create an in-memory cached image and draw piece fully opaque
-      BufferedImage cachedImage = ImageUtils.createCompatibleTranslucentImage(w, h);
+      final String visibleState = (String) piece.getProperty(Properties.VISIBLE_STATE);
+      if (cachedImage == null || zoom != cachedZoom || ! cachedState.equals(visibleState)
+              || ! bounds.equals(cachedBounds)) {
 
-      Graphics2D cg = cachedImage.createGraphics();
-      try {
-        cg.translate((int)(-bounds.x * zoom), (int)(-bounds.y * zoom));
-        piece.draw(cg, 0, 0, obs, zoom); // Fully opaque
+        // Create an in-memory cached image and draw piece fully opaque
+        cachedImage = ImageUtils.createCompatibleTranslucentImage(w, h);
+        cachedZoom = zoom;
+        cachedState = visibleState;
+        cachedBounds = bounds;
 
-        final Rectangle boundsCheck = piece.getShape().getBounds();
-        final int wc = (int) Math.round(boundsCheck.width * zoom);
-        final int hc = (int) Math.round(boundsCheck.height * zoom);
-        if (wc > w || hc > h) {
-          // After drawing, the in-memory image buffer is too small.
-          // Resize the buffer and redraw.
-          // This can happen when a label's length increases.
-          bounds = boundsCheck;
-          cachedImage = ImageUtils.createCompatibleTranslucentImage(wc, hc);
-          cg.dispose();
-          cg = cachedImage.createGraphics();
+        final Graphics2D cg = cachedImage.createGraphics();
+        try {
           cg.translate((int)(-bounds.x * zoom), (int)(-bounds.y * zoom));
           piece.draw(cg, 0, 0, obs, zoom); // Fully opaque
         }
-      }
-      finally {
-        cg.dispose();
+        finally {
+          cg.dispose();
+        }
       }
 
       // Apply the appropriate transparency to the overall image
