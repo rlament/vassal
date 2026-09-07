@@ -18,62 +18,124 @@
 package VASSAL.tools.io;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
-import org.junit.*;
+import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class DeobfuscatingInputStreamTest {
   // A popular pangram.
   private final String plain = "All jackdaws love my great sphinx of quartz.";
 
-  // The same pangram, obfuscated.
-  private final String obfus = "!VCSK581934347832393b333c392f2b7834372e3d783521783f2a3d392c782b283031362078373e78292d392a2c2276";
+  // The same pangram, obfuscated in the legacy hex-encoded format.
+  private final String legacyObfus = "!VCSK581934347832393b333c392f2b7834372e3d783521783f2a3d392c782b283031362078373e78292d392a2c2276";
+
+  private static byte[] deobfuscate(byte[] b) throws IOException {
+    try (DeobfuscatingInputStream in =
+           new DeobfuscatingInputStream(new ByteArrayInputStream(b))) {
+      return in.readAllBytes();
+    }
+  }
+
+  private static byte[] obfuscate(byte[] b) throws IOException {
+    final ByteArrayOutputStream bout = new ByteArrayOutputStream();
+    try (ObfuscatingOutputStream out = new ObfuscatingOutputStream(bout)) {
+      out.write(b);
+    }
+    return bout.toByteArray();
+  }
 
   /** Test plain text input. */
   @Test
   public void testPlainInput() throws IOException {
-    final byte[] expected = plain.getBytes("UTF-8");
-
-    final DeobfuscatingInputStream in =
-      new DeobfuscatingInputStream(
-        new ByteArrayInputStream(expected));
-
-    final byte[] result = in.readAllBytes();
-    in.close();
-
-    assertArrayEquals(expected, result);
+    final byte[] expected = plain.getBytes(StandardCharsets.UTF_8);
+    assertArrayEquals(expected, deobfuscate(expected));
   }
 
-  /** Test obfuscated input with lowercase hex digits. */
+  /** Test plain text input shorter than a header. */
   @Test
-  public void testObfuscatedInputLowerCaseHexDigits() throws IOException {
-    final byte[] b = obfus.getBytes("UTF-8");
-    final byte[] expected = plain.getBytes("UTF-8");
-
-    final DeobfuscatingInputStream in =
-      new DeobfuscatingInputStream(
-        new ByteArrayInputStream(b));
-
-    final byte[] result = in.readAllBytes();
-    in.close();
-
-    assertArrayEquals(expected, result);
+  public void testShortPlainInput() throws IOException {
+    final byte[] expected = "ab".getBytes(StandardCharsets.UTF_8);
+    assertArrayEquals(expected, deobfuscate(expected));
   }
 
-  /** Test obfuscated input with uppercase hex digits. */
+  /** Test empty input. */
   @Test
-  public void testObfuscatedInputUpperCaseHexDigits() throws IOException {
-    final byte[] b = obfus.toUpperCase().getBytes("UTF-8");
-    final byte[] expected = plain.getBytes("UTF-8");
+  public void testEmptyInput() throws IOException {
+    assertArrayEquals(new byte[0], deobfuscate(new byte[0]));
+  }
 
-    final DeobfuscatingInputStream in =
-      new DeobfuscatingInputStream(
-        new ByteArrayInputStream(b));
+  /** Test plain text input which is exactly as long as the header. */
+  @Test
+  public void testHeaderLengthPlainInput() throws IOException {
+    final byte[] expected = "abcd".getBytes(StandardCharsets.UTF_8);
+    assertEquals(ObfuscatingOutputStream.HEADER.length(), expected.length);
+    assertArrayEquals(expected, deobfuscate(expected));
+  }
 
-    final byte[] result = in.readAllBytes();
-    in.close();
+  /** Test obfuscated input. */
+  @Test
+  public void testObfuscatedInput() throws IOException {
+    final byte[] expected = plain.getBytes(StandardCharsets.UTF_8);
+    assertArrayEquals(expected, deobfuscate(obfuscate(expected)));
+  }
 
-    assertArrayEquals(expected, result);
+  /** Test obfuscated input containing every byte value. */
+  @Test
+  public void testObfuscatedInputAllByteValues() throws IOException {
+    final byte[] expected = new byte[256];
+    for (int i = 0; i < expected.length; ++i) {
+      expected[i] = (byte) i;
+    }
+    assertArrayEquals(expected, deobfuscate(obfuscate(expected)));
+  }
+
+  /** Test empty obfuscated input. */
+  @Test
+  public void testEmptyObfuscatedInput() throws IOException {
+    assertArrayEquals(new byte[0], deobfuscate(obfuscate(new byte[0])));
+  }
+
+  /** Test obfuscated input read one byte at a time. */
+  @Test
+  public void testObfuscatedInputByByte() throws IOException {
+    final byte[] expected = plain.getBytes(StandardCharsets.UTF_8);
+    final ByteArrayOutputStream bout = new ByteArrayOutputStream();
+
+    try (DeobfuscatingInputStream in = new DeobfuscatingInputStream(
+           new ByteArrayInputStream(obfuscate(expected)))) {
+      int b;
+      while ((b = in.read()) >= 0) {
+        bout.write(b);
+      }
+    }
+
+    assertArrayEquals(expected, bout.toByteArray());
+  }
+
+  /** An obfuscated stream lacking a key is malformed. */
+  @Test
+  public void testMissingKey() {
+    final byte[] b =
+      ObfuscatingOutputStream.HEADER.getBytes(StandardCharsets.UTF_8);
+    assertThrows(IOException.class, () -> deobfuscate(b));
+  }
+
+  /** Test legacy obfuscated input with lowercase hex digits. */
+  @Test
+  public void testLegacyObfuscatedInputLowerCaseHexDigits() throws IOException {
+    final byte[] expected = plain.getBytes(StandardCharsets.UTF_8);
+    final byte[] b = legacyObfus.getBytes(StandardCharsets.UTF_8);
+    assertArrayEquals(expected, deobfuscate(b));
+  }
+
+  /** Test legacy obfuscated input with uppercase hex digits. */
+  @Test
+  public void testLegacyObfuscatedInputUpperCaseHexDigits() throws IOException {
+    final byte[] expected = plain.getBytes(StandardCharsets.UTF_8);
+    final byte[] b = legacyObfus.toUpperCase().getBytes(StandardCharsets.UTF_8);
+    assertArrayEquals(expected, deobfuscate(b));
   }
 }

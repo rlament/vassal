@@ -31,22 +31,26 @@ import java.util.Random;
  * A {@link FilterOutputStream} which handles simple obfuscation of a file's
  * contents, to prevent the casual cheat of hand-editing.
  *
+ * <p>The output consists of {@link #HEADER}, followed by the one-byte key,
+ * followed by the input XORed byte-by-byte with the key.</p>
+ *
  * @author uckelman
  * @since 3.2.0
  */
 public class ObfuscatingOutputStream extends FilterOutputStream {
-  public static final String HEADER = "!VCSK"; //NON-NLS
+  public static final String HEADER = "VOBS"; //NON-NLS
   private static final Random rand = new Random();
 
   private final byte key;
-  private final byte[] pair = new byte[2];
+  private final byte[] buf = new byte[8192];
 
   /**
    * @param out the stream to wrap
    * @throws IOException oops
    */
   public ObfuscatingOutputStream(OutputStream out) throws IOException {
-    this(out, (byte) rand.nextInt(256));
+    // Keys are in 1-255; XORing with 0 would leave the data in plain text.
+    this(out, (byte) (rand.nextInt(255) + 1));
   }
 
   /**
@@ -60,31 +64,28 @@ public class ObfuscatingOutputStream extends FilterOutputStream {
     this.key = key;
 
     out.write(HEADER.getBytes(StandardCharsets.UTF_8));
-
-    pair[0] = HEX[(key & 0xF0) >>> 4];
-    pair[1] = HEX[key & 0x0F];
-    out.write(pair);
+    out.write(key);
   }
 
   /** {@inheritDoc} */
   @Override
   public void write(byte[] bytes, int off, int len) throws IOException {
-    for (int i = 0; i < len; ++i) write(bytes[off + i]);
+    // Obfuscate via a scratch buffer, so as not to alter the caller's array
+    while (len > 0) {
+      final int n = Math.min(len, buf.length);
+      for (int i = 0; i < n; ++i) {
+        buf[i] = (byte) (bytes[off + i] ^ key);
+      }
+      out.write(buf, 0, n);
+      off += n;
+      len -= n;
+    }
   }
-
-  private static final byte[] HEX = {
-    '0', '1', '2', '3', '4', '5', '6', '7',
-    '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
-  };
 
   /** {@inheritDoc} */
   @Override
   public void write(int b) throws IOException {
-    b ^= key;
-
-    pair[0] = HEX[(b & 0xF0) >>> 4];
-    pair[1] = HEX[b & 0x0F];
-    out.write(pair);
+    out.write(b ^ key);
   }
 
   public static void main(String[] args) throws IOException {
