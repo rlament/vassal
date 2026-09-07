@@ -29,6 +29,8 @@
         { "num": 14583, "desc": "MoveCameraButton now uses preferred center instead of viewport center" }
       ],
       "other": [
+        { "num": 15063, "desc": "Upgraded slf4j-api to 2.0.19" },
+        { "num": 15062, "desc": "Upgraded byte-buddy to 1.18.13" }
       ]
     }
   ]
