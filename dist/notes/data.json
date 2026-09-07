@@ -26,6 +26,7 @@
       "bug_fixes": [
       ],
       "improvements": [
+        { "num": 15042, "desc": "Update MacOS launch script to allow more options" }
       ],
       "other": [
         { "num": 15063, "desc": "Upgraded slf4j-api to 2.0.19" },
