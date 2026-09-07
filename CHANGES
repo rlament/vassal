@@ -1,5 +1,8 @@
 3.7.28 - ???
 
+* 15063: Upgraded slf4j-api to 2.0.19
+* 15062: Upgraded byte-buddy to 1.18.13
+
 3.7.27 - 6 September 2026
 
 * 15046: Upgraded checkstyle to 14.1.0
