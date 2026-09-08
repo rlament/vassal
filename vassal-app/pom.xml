@@ -19,6 +19,7 @@
         <project.reporting.outputEncoding>${project.build.sourceEncoding}</project.reporting.outputEncoding>
         <version.batik>1.19</version.batik>
         <clirr.nofork.comparison.version>3.7.0</clirr.nofork.comparison.version>
+        <argLine/>
     </properties>
 
     <dependencyManagement>
@@ -257,6 +258,17 @@
                 </configuration>
             </plugin>
             <plugin>
+               <groupId>org.apache.maven.plugins</groupId>
+               <artifactId>maven-dependency-plugin</artifactId>
+               <executions>
+                   <execution>
+                       <goals>
+                           <goal>properties</goal>
+                       </goals>
+                   </execution>
+               </executions>
+            </plugin>
+            <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <enableAssertions>true</enableAssertions>
@@ -266,6 +278,7 @@
                         <exclude>**/AllTests.java</exclude>
                     </excludes>
                     <reportNameSuffix>MVN</reportNameSuffix>
+                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
                 </configuration>
             </plugin>
             <plugin>
