@@ -1868,8 +1868,9 @@ public class PieceMover extends AbstractBuildable
       for (final PieceIterator i = db.getIterator();  // NOPMD
            i.hasMoreElements(); pieces.add(i.nextPiece()));
       for (final GamePiece piece : pieces) {
-        if (piece.getMap() != null &&
-            Boolean.TRUE.equals(piece.getProperty(Properties.NON_MOVABLE))) {
+        final Object cannotMove = piece.getProperty(Properties.NON_MOVABLE);
+        if (piece.getMap() != null && (Boolean.TRUE.equals(cannotMove) ||
+                                       "true".equals(cannotMove))) {
           db.remove(piece);
         }
       }
