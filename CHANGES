@@ -4,6 +4,7 @@
 * 15063: Upgraded slf4j-api to 2.0.19
 * 15062: Upgraded byte-buddy to 1.18.13
 * 15054: Fix Truncated text label on hidden pieces
+* 15050: Upgraded maven-surefire-plugin to 3.6.0
 * 15042: Update MacOS launch script to allow more options
 
 3.7.27 - 6 September 2026

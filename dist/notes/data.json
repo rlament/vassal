@@ -32,7 +32,8 @@
       "other": [
         { "num": 15065, "desc": "Switched from obsolote mockito-inline to mockito-core" },
         { "num": 15063, "desc": "Upgraded slf4j-api to 2.0.19" },
-        { "num": 15062, "desc": "Upgraded byte-buddy to 1.18.13" }
+        { "num": 15062, "desc": "Upgraded byte-buddy to 1.18.13" },
+        { "num": 15050, "desc": "Upgraded maven-surefire-plugin to 3.6.0" }
       ]
     },
     {
