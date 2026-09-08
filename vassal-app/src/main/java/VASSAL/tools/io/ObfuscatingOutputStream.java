@@ -22,7 +22,6 @@ import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Random;
@@ -31,22 +30,36 @@ import java.util.Random;
  * A {@link FilterOutputStream} which handles simple obfuscation of a file's
  * contents, to prevent the casual cheat of hand-editing.
  *
+ * <p>The output consists of {@link #HEADER_BYTES}, followed by the one-byte
+ * key, followed by the input XORed byte-by-byte with the key.</p>
+ *
  * @author uckelman
  * @since 3.2.0
  */
 public class ObfuscatingOutputStream extends FilterOutputStream {
+  /**
+   * The header of the hex-encoded format written before VASSAL 3.8.
+   *
+   * @deprecated The hex-encoded format is no longer written, only read.
+   * Obfuscated output is now marked with {@link #HEADER_BYTES}.
+   */
+  @Deprecated(since = "2026-09-08", forRemoval = true)
   public static final String HEADER = "!VCSK"; //NON-NLS
+
+  /** The header marking obfuscated output. */
+  public static final byte[] HEADER_BYTES = { 'V', 'O', 'B', 'S' };
+
   private static final Random rand = new Random();
 
   private final byte key;
-  private final byte[] pair = new byte[2];
 
   /**
    * @param out the stream to wrap
    * @throws IOException oops
    */
   public ObfuscatingOutputStream(OutputStream out) throws IOException {
-    this(out, (byte) rand.nextInt(256));
+    // Keys are in 1-255; XORing with 0 would leave the data in plain text.
+    this(out, (byte) (rand.nextInt(255) + 1));
   }
 
   /**
@@ -59,11 +72,8 @@ public class ObfuscatingOutputStream extends FilterOutputStream {
     super(out);
     this.key = key;
 
-    out.write(HEADER.getBytes(StandardCharsets.UTF_8));
-
-    pair[0] = HEX[(key & 0xF0) >>> 4];
-    pair[1] = HEX[key & 0x0F];
-    out.write(pair);
+    out.write(HEADER_BYTES);
+    out.write(key);
   }
 
   /** {@inheritDoc} */
@@ -72,19 +82,10 @@ public class ObfuscatingOutputStream extends FilterOutputStream {
     for (int i = 0; i < len; ++i) write(bytes[off + i]);
   }
 
-  private static final byte[] HEX = {
-    '0', '1', '2', '3', '4', '5', '6', '7',
-    '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
-  };
-
   /** {@inheritDoc} */
   @Override
   public void write(int b) throws IOException {
-    b ^= key;
-
-    pair[0] = HEX[(b & 0xF0) >>> 4];
-    pair[1] = HEX[b & 0x0F];
-    out.write(pair);
+    out.write(b ^ key);
   }
 
   public static void main(String[] args) throws IOException {

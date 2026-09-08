@@ -19,29 +19,130 @@ package VASSAL.tools.io;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
-import org.junit.*;
+import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class ObfuscatingOutputStreamTest {
   // A popular pangram.
   private final String plain = "All jackdaws love my great sphinx of quartz.";
 
-  // The same pangram, obfuscated.
-  private final String obfus = "!VCSK581934347832393b333c392f2b7834372e3d783521783f2a3d392c782b283031362078373e78292d392a2c2276";
-
   // The key used for the obfuscated text.
   private final byte key = (byte) 0x58;
 
-  @Test
-  public void testObfuscatedOutput() throws IOException {
-    final byte[] expected = obfus.getBytes("UTF-8");
+  // A key with the high bit set, to catch sign-extension errors.
+  private final byte highKey = (byte) 0x80;
+
+  private byte[] obfuscated(byte key) {
+    final byte[] plainBytes = plain.getBytes(StandardCharsets.UTF_8);
+    final byte[] header = ObfuscatingOutputStream.HEADER_BYTES;
+
+    final byte[] expected = new byte[header.length + 1 + plainBytes.length];
+    System.arraycopy(header, 0, expected, 0, header.length);
+    expected[header.length] = key;
+    for (int i = 0; i < plainBytes.length; ++i) {
+      expected[header.length + 1 + i] = (byte) (plainBytes[i] ^ key);
+    }
+
+    return expected;
+  }
+
+  private byte[] writeAsArray(byte key) throws IOException {
     final ByteArrayOutputStream bout = new ByteArrayOutputStream();
 
-    final ObfuscatingOutputStream out = new ObfuscatingOutputStream(bout, key);
-    out.write(plain.getBytes("UTF-8"));
-    out.close();
+    try (ObfuscatingOutputStream out =
+           new ObfuscatingOutputStream(bout, key)) {
+      out.write(plain.getBytes(StandardCharsets.UTF_8));
+    }
 
-    assertArrayEquals(expected, bout.toByteArray());
+    return bout.toByteArray();
+  }
+
+  private byte[] writeByByte(byte key) throws IOException {
+    final ByteArrayOutputStream bout = new ByteArrayOutputStream();
+
+    try (ObfuscatingOutputStream out =
+           new ObfuscatingOutputStream(bout, key)) {
+      for (final byte b : plain.getBytes(StandardCharsets.UTF_8)) {
+        out.write(b);
+      }
+    }
+
+    return bout.toByteArray();
+  }
+
+  /** Test writing an array. */
+  @Test
+  public void testObfuscatedOutput() throws IOException {
+    assertArrayEquals(obfuscated(key), writeAsArray(key));
+  }
+
+  /** Test writing one byte at a time. */
+  @Test
+  public void testObfuscatedOutputByByte() throws IOException {
+    assertArrayEquals(obfuscated(key), writeByByte(key));
+  }
+
+  /** Test writing an array with a key which has the high bit set. */
+  @Test
+  public void testObfuscatedOutputHighKey() throws IOException {
+    assertArrayEquals(obfuscated(highKey), writeAsArray(highKey));
+  }
+
+  /** Test writing one byte at a time with a key with the high bit set. */
+  @Test
+  public void testObfuscatedOutputByByteHighKey() throws IOException {
+    assertArrayEquals(obfuscated(highKey), writeByByte(highKey));
+  }
+
+  /** The caller's array must not be modified. */
+  @Test
+  public void testInputArrayUnmodified() throws IOException {
+    final byte[] bytes = plain.getBytes(StandardCharsets.UTF_8);
+    final byte[] copy = bytes.clone();
+
+    try (ObfuscatingOutputStream out =
+           new ObfuscatingOutputStream(new ByteArrayOutputStream(), key)) {
+      out.write(bytes);
+    }
+
+    assertArrayEquals(copy, bytes);
+  }
+
+  /** A large write must be obfuscated correctly throughout. */
+  @Test
+  public void testObfuscatedOutputLargeArray() throws IOException {
+    final byte[] bytes = new byte[100000];
+    for (int i = 0; i < bytes.length; ++i) {
+      bytes[i] = (byte) i;
+    }
+
+    final ByteArrayOutputStream bout = new ByteArrayOutputStream();
+
+    try (ObfuscatingOutputStream out =
+           new ObfuscatingOutputStream(bout, key)) {
+      out.write(bytes);
+    }
+
+    final byte[] result = bout.toByteArray();
+    final int off = ObfuscatingOutputStream.HEADER_BYTES.length + 1;
+
+    assertEquals(off + bytes.length, result.length);
+    for (int i = 0; i < bytes.length; ++i) {
+      assertEquals((byte) (bytes[i] ^ key), result[off + i]);
+    }
+  }
+
+  /** The key is never zero, as XORing with zero obfuscates nothing. */
+  @Test
+  public void testKeyIsNeverZero() throws IOException {
+    final int off = ObfuscatingOutputStream.HEADER_BYTES.length;
+
+    for (int i = 0; i < 10000; ++i) {
+      final ByteArrayOutputStream bout = new ByteArrayOutputStream();
+      new ObfuscatingOutputStream(bout).close();
+      assertTrue(bout.toByteArray()[off] != 0);
+    }
   }
 }

@@ -21,19 +21,23 @@ import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PushbackInputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 
 /**
  * A {@link FilterInputStream} which converts a file created with
  * {@link ObfuscatingOutputStream} back into plain text.
- * Additionally, plain text will be passed through unchanged.
+ * Files in the legacy hex-encoded format are also handled, and
+ * plain text will be passed through unchanged.
  *
  * @author Joel Uckelman
  * @since 3.2.0
  */
 public class DeobfuscatingInputStream extends FilterInputStream {
+
+  /** The header of the hex-encoded format written before VASSAL 3.8. */
+  private static final byte[] LEGACY_HEADER = { '!', 'V', 'C', 'S', 'K' };
 
   /**
    * @param in the stream to wrap
@@ -42,27 +46,45 @@ public class DeobfuscatingInputStream extends FilterInputStream {
   public DeobfuscatingInputStream(InputStream in) throws IOException {
     super(null);
 
-    final byte[] header = new byte[ObfuscatingOutputStream.HEADER.length()];
-    readFully(in, header, header.length);
-    if (new String(header, StandardCharsets.UTF_8).equals(ObfuscatingOutputStream.HEADER)) {
-      this.in = new DeobfuscatingInputStreamImpl(in);
+    final byte[] header = ObfuscatingOutputStream.HEADER_BYTES;
+
+    // The legacy header is the longer of the two
+    final byte[] buf = new byte[LEGACY_HEADER.length];
+
+    int n = readFully(in, buf, header.length);
+
+    if (n == header.length) {
+      if (Arrays.equals(buf, 0, n, header, 0, n)) {
+        this.in = new DeobfuscatingInputStreamImpl(in);
+        return;
+      }
+
+      // Read the byte by which the legacy header is longer
+      final int b = in.read();
+      if (b >= 0) {
+        buf[n++] = (byte) b;
+
+        if (Arrays.equals(buf, LEGACY_HEADER)) {
+          this.in = new LegacyDeobfuscatingInputStreamImpl(in);
+          return;
+        }
+      }
     }
-    else {
-      final PushbackInputStream pin =
-        new PushbackInputStream(in, header.length);
-      pin.unread(header);
-      this.in = pin;
-    }
+
+    // Not obfuscated; pass the whole stream through unchanged
+    final PushbackInputStream pin = new PushbackInputStream(in, buf.length);
+    pin.unread(buf, 0, n);
+    this.in = pin;
   }
 
   /**
-   * Reads the given number of bytes.
+   * Reads up to the given number of bytes.
    *
    * @param in the source
    * @param bytes the destination
-   * @param off the offset into the destination array
    * @param len the number of bytes to read
-   * @throws IOException if <code>len</code> bytes cannot be read
+   * @return the number of bytes read
+   * @throws IOException if an I/O error occurs
    */
   private static int readFully(InputStream in, byte[] bytes, int len)
                                                            throws IOException {
@@ -77,11 +99,48 @@ public class DeobfuscatingInputStream extends FilterInputStream {
     return n;
   }
 
+  /**
+   * Deobfuscates the format written by {@link ObfuscatingOutputStream}:
+   * a one-byte key, followed by the data XORed with the key.
+   */
   private static class DeobfuscatingInputStreamImpl extends FilterInputStream {
+    private final byte key;
+
+    public DeobfuscatingInputStreamImpl(InputStream in) throws IOException {
+      super(in);
+
+      final int k = in.read();
+      if (k < 0) {
+        throw new IOException("Truncated obfuscated stream: missing key"); //NON-NLS
+      }
+      key = (byte) k;
+    }
+
+    @Override
+    public int read(byte[] bytes, int off, int len) throws IOException {
+      final int n = in.read(bytes, off, len);
+      for (int i = 0; i < n; ++i) {
+        bytes[off + i] ^= key;
+      }
+      return n;
+    }
+
+    @Override
+    public int read() throws IOException {
+      final int b = in.read();
+      return b < 0 ? -1 : (b ^ key) & 0xFF;
+    }
+  }
+
+  /**
+   * Deobfuscates the legacy format, in which the key and each data byte
+   * were written as a pair of hex digits.
+   */
+  private static class LegacyDeobfuscatingInputStreamImpl extends FilterInputStream {
     private final byte key;
     private final byte[] pair = new byte[2];
 
-    public DeobfuscatingInputStreamImpl(InputStream in) throws IOException {
+    public LegacyDeobfuscatingInputStreamImpl(InputStream in) throws IOException {
       super(in);
 
       readFully(in, pair, 2);
