@@ -36,8 +36,7 @@ public class ObfuscatingOutputStreamTest {
 
   private byte[] obfuscated(byte key) {
     final byte[] plainBytes = plain.getBytes(StandardCharsets.UTF_8);
-    final byte[] header =
-      ObfuscatingOutputStream.HEADER.getBytes(StandardCharsets.UTF_8);
+    final byte[] header = ObfuscatingOutputStream.HEADER_BYTES;
 
     final byte[] expected = new byte[header.length + 1 + plainBytes.length];
     System.arraycopy(header, 0, expected, 0, header.length);
@@ -111,9 +110,9 @@ public class ObfuscatingOutputStreamTest {
     assertArrayEquals(copy, bytes);
   }
 
-  /** Writes longer than the internal buffer must be obfuscated correctly. */
+  /** A large write must be obfuscated correctly throughout. */
   @Test
-  public void testObfuscatedOutputLongerThanBuffer() throws IOException {
+  public void testObfuscatedOutputLargeArray() throws IOException {
     final byte[] bytes = new byte[100000];
     for (int i = 0; i < bytes.length; ++i) {
       bytes[i] = (byte) i;
@@ -127,7 +126,7 @@ public class ObfuscatingOutputStreamTest {
     }
 
     final byte[] result = bout.toByteArray();
-    final int off = ObfuscatingOutputStream.HEADER.length() + 1;
+    final int off = ObfuscatingOutputStream.HEADER_BYTES.length + 1;
 
     assertEquals(off + bytes.length, result.length);
     for (int i = 0; i < bytes.length; ++i) {
@@ -138,7 +137,7 @@ public class ObfuscatingOutputStreamTest {
   /** The key is never zero, as XORing with zero obfuscates nothing. */
   @Test
   public void testKeyIsNeverZero() throws IOException {
-    final int off = ObfuscatingOutputStream.HEADER.length();
+    final int off = ObfuscatingOutputStream.HEADER_BYTES.length;
 
     for (int i = 0; i < 10000; ++i) {
       final ByteArrayOutputStream bout = new ByteArrayOutputStream();

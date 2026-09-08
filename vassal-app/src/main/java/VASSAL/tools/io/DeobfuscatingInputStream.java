@@ -21,9 +21,9 @@ import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PushbackInputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 
 /**
  * A {@link FilterInputStream} which converts a file created with
@@ -36,8 +36,8 @@ import java.nio.file.Path;
  */
 public class DeobfuscatingInputStream extends FilterInputStream {
 
-  /** The header used by the hex-encoded format written before VASSAL 3.8. */
-  private static final String LEGACY_HEADER = "!VCSK"; //NON-NLS
+  /** The header of the hex-encoded format written before VASSAL 3.8. */
+  private static final byte[] LEGACY_HEADER = { '!', 'V', 'C', 'S', 'K' };
 
   /**
    * @param in the stream to wrap
@@ -46,50 +46,52 @@ public class DeobfuscatingInputStream extends FilterInputStream {
   public DeobfuscatingInputStream(InputStream in) throws IOException {
     super(null);
 
-    final int hlen = ObfuscatingOutputStream.HEADER.length();
-    final byte[] header = new byte[Math.max(hlen, LEGACY_HEADER.length())];
+    final byte[] header = ObfuscatingOutputStream.HEADER_BYTES;
 
-    int n = readFully(in, header, 0, hlen);
+    // The legacy header is the longer of the two
+    final byte[] buf = new byte[LEGACY_HEADER.length];
 
-    if (n == hlen) {
-      if (ObfuscatingOutputStream.HEADER.equals(
-            new String(header, 0, hlen, StandardCharsets.UTF_8))) {
+    int n = readFully(in, buf, header.length);
+
+    if (n == header.length) {
+      if (Arrays.equals(buf, 0, n, header, 0, n)) {
         this.in = new DeobfuscatingInputStreamImpl(in);
         return;
       }
 
-      n += readFully(in, header, hlen, LEGACY_HEADER.length() - hlen);
+      // Read the byte by which the legacy header is longer
+      final int b = in.read();
+      if (b >= 0) {
+        buf[n++] = (byte) b;
 
-      if (n == LEGACY_HEADER.length() && LEGACY_HEADER.equals(
-            new String(header, 0, n, StandardCharsets.UTF_8))) {
-        this.in = new LegacyDeobfuscatingInputStreamImpl(in);
-        return;
+        if (Arrays.equals(buf, LEGACY_HEADER)) {
+          this.in = new LegacyDeobfuscatingInputStreamImpl(in);
+          return;
+        }
       }
     }
 
     // Not obfuscated; pass the whole stream through unchanged
-    final PushbackInputStream pin =
-      new PushbackInputStream(in, header.length);
-    pin.unread(header, 0, n);
+    final PushbackInputStream pin = new PushbackInputStream(in, buf.length);
+    pin.unread(buf, 0, n);
     this.in = pin;
   }
 
   /**
-   * Reads the given number of bytes.
+   * Reads up to the given number of bytes.
    *
    * @param in the source
    * @param bytes the destination
-   * @param off the offset into the destination array
    * @param len the number of bytes to read
    * @return the number of bytes read
    * @throws IOException if an I/O error occurs
    */
-  private static int readFully(InputStream in, byte[] bytes, int off, int len)
+  private static int readFully(InputStream in, byte[] bytes, int len)
                                                            throws IOException {
     int count;
     int n = 0;
     while (n < len) {
-      count = in.read(bytes, off + n, len - n);
+      count = in.read(bytes, n, len - n);
       if (count < 0) break;
       n += count;
     }
@@ -141,7 +143,7 @@ public class DeobfuscatingInputStream extends FilterInputStream {
     public LegacyDeobfuscatingInputStreamImpl(InputStream in) throws IOException {
       super(in);
 
-      readFully(in, pair, 0, 2);
+      readFully(in, pair, 2);
       key = (byte) ((unhex(pair[0]) << 4) | unhex(pair[1]));
     }
 
@@ -155,7 +157,7 @@ public class DeobfuscatingInputStream extends FilterInputStream {
 
     @Override
     public int read() throws IOException {
-      switch (readFully(in, pair, 0, 2)) {
+      switch (readFully(in, pair, 2)) {
       case  0:
         return -1;
       case  2:

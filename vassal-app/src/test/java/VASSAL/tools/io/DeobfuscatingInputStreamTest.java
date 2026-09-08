@@ -71,7 +71,7 @@ public class DeobfuscatingInputStreamTest {
   @Test
   public void testHeaderLengthPlainInput() throws IOException {
     final byte[] expected = "abcd".getBytes(StandardCharsets.UTF_8);
-    assertEquals(ObfuscatingOutputStream.HEADER.length(), expected.length);
+    assertEquals(ObfuscatingOutputStream.HEADER_BYTES.length, expected.length);
     assertArrayEquals(expected, deobfuscate(expected));
   }
 
@@ -118,8 +118,7 @@ public class DeobfuscatingInputStreamTest {
   /** An obfuscated stream lacking a key is malformed. */
   @Test
   public void testMissingKey() {
-    final byte[] b =
-      ObfuscatingOutputStream.HEADER.getBytes(StandardCharsets.UTF_8);
+    final byte[] b = ObfuscatingOutputStream.HEADER_BYTES.clone();
     assertThrows(IOException.class, () -> deobfuscate(b));
   }
 
