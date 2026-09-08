@@ -26,6 +26,7 @@
         { "num": 15049, "desc": "Make Zone use full qualified path for property container" }
       ],
       "improvements": [
+        { "num": 15060, "desc": "Stop writing obfuscated data in hex" },
         { "num": 14583, "desc": "MoveCameraButton now uses preferred center instead of viewport center" }
       ],
       "other": [

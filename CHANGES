@@ -1,5 +1,6 @@
 3.8.0-beta2 - ???
 
+* 15060: Stop writing obfuscated data in hex
 * 15049: Make Zone use full qualified path for property container
 * 14583: MoveCameraButton now uses preferred center instead of viewport
     center
